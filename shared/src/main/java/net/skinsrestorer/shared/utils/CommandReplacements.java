@@ -19,7 +19,6 @@
  */
 package net.skinsrestorer.shared.utils;
 
-import net.skinsrestorer.shared.storage.CallableString;
 import net.skinsrestorer.shared.storage.Config;
 import net.skinsrestorer.shared.storage.Locale;
 

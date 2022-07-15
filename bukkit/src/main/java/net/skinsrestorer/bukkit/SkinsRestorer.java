@@ -27,6 +27,7 @@ import net.skinsrestorer.api.SkinsRestorerAPI;
 import net.skinsrestorer.api.exception.SkinRequestException;
 import net.skinsrestorer.api.interfaces.IPropertyFactory;
 import net.skinsrestorer.api.interfaces.ISRPlayer;
+import net.skinsrestorer.api.interfaces.ISkinStorage;
 import net.skinsrestorer.api.property.GenericProperty;
 import net.skinsrestorer.api.property.IProperty;
 import net.skinsrestorer.api.reflection.ReflectionUtil;
@@ -38,6 +39,7 @@ import net.skinsrestorer.bukkit.listener.InventoryListener;
 import net.skinsrestorer.bukkit.listener.PlayerJoin;
 import net.skinsrestorer.bukkit.listener.PlayerResourcePackStatus;
 import net.skinsrestorer.bukkit.listener.ProtocolLibJoinListener;
+import net.skinsrestorer.bukkit.skinproxy.ProxySkinStorage;
 import net.skinsrestorer.bukkit.utils.BukkitConsoleImpl;
 import net.skinsrestorer.bukkit.utils.BukkitProperty;
 import net.skinsrestorer.bukkit.utils.UpdateDownloaderGithub;
@@ -51,6 +53,7 @@ import net.skinsrestorer.shared.storage.SkinStorage;
 import net.skinsrestorer.shared.storage.YamlConfig;
 import net.skinsrestorer.shared.update.UpdateChecker;
 import net.skinsrestorer.shared.update.UpdateCheckerGitHub;
+import net.skinsrestorer.shared.utils.IOExceptionConsumer;
 import net.skinsrestorer.shared.utils.MetricsCounter;
 import net.skinsrestorer.shared.utils.SharedMethods;
 import net.skinsrestorer.shared.utils.WrapperFactory;
@@ -90,7 +93,7 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
     private final SRLogger srLogger = new SRLogger(javaLogger, true);
     private final MojangAPI mojangAPI = new MojangAPI(srLogger, metricsCounter);
     private final MineSkinAPI mineSkinAPI = new MineSkinAPI(srLogger, metricsCounter);
-    private final SkinStorage skinStorage = new SkinStorage(srLogger, mojangAPI, mineSkinAPI);
+    private ISkinStorage skinStorage;
     private final UpdateChecker updateChecker = new UpdateCheckerGitHub(2124, getVersion(), srLogger, "SkinsRestorerUpdater/Bukkit");
     private final SkinsRestorerAPI skinsRestorerAPI = new SkinsRestorerBukkitAPI();
     private final UpdateDownloaderGithub updateDownloader = new UpdateDownloaderGithub(this);
@@ -203,78 +206,72 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
         Bukkit.getPluginManager().registerEvents(new InventoryListener(), this);
 
         if (proxyMode) {
+            this.skinStorage = new ProxySkinStorage(this);
+
             Bukkit.getMessenger().registerOutgoingPluginChannel(this, "sr:skinchange");
-            Bukkit.getMessenger().registerIncomingPluginChannel(this, "sr:skinchange", (channel, player, message) -> {
-                if (!channel.equals("sr:skinchange"))
-                    return;
+            Bukkit.getMessenger().registerIncomingPluginChannel(this, "sr:skinchange", (channel, player, message) ->
+                    Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+                        DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
 
-                Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
-                    DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
+                        try {
+                            String subChannel = in.readUTF();
 
-                    try {
-                        String subChannel = in.readUTF();
+                            if (subChannel.equalsIgnoreCase("SkinUpdate")) {
+                                try {
+                                    skinsRestorerAPI.applySkin(new PlayerWrapper(player), SkinsRestorerAPI.getApi().createPlatformProperty(in.readUTF(), in.readUTF(), in.readUTF()));
+                                } catch (IOException ignored) {
+                                }
 
-                        if (subChannel.equalsIgnoreCase("SkinUpdate")) {
-                            try {
-                                skinsRestorerAPI.applySkin(new PlayerWrapper(player), SkinsRestorerAPI.getApi().createPlatformProperty(in.readUTF(), in.readUTF(), in.readUTF()));
-                            } catch (IOException ignored) {
+                                skinApplierBukkit.updateSkin(player);
                             }
-
-                            skinApplierBukkit.updateSkin(player);
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                });
-            });
+                    }));
 
             Bukkit.getMessenger().registerOutgoingPluginChannel(this, "sr:messagechannel");
-            Bukkit.getMessenger().registerIncomingPluginChannel(this, "sr:messagechannel", (channel, channelPlayer, message) -> {
-                if (!channel.equals("sr:messagechannel"))
-                    return;
+            Bukkit.getMessenger().registerIncomingPluginChannel(this, "sr:messagechannel", (channel, channelPlayer, message) ->
+                    Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
+                        DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
 
-                Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
-                    DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
+                        try {
+                            String subChannel = in.readUTF();
 
-                    try {
-                        String subChannel = in.readUTF();
+                            if (subChannel.equalsIgnoreCase("OPENGUI")) {
+                                Player player = Bukkit.getPlayer(in.readUTF());
+                                if (player == null)
+                                    return;
 
-                        if (subChannel.equalsIgnoreCase("OPENGUI")) {
-                            Player player = Bukkit.getPlayer(in.readUTF());
-                            if (player == null)
-                                return;
+                                requestSkinsFromBungeeCord(player, 0);
+                            }
 
-                            requestSkinsFromBungeeCord(player, 0);
+                            if (subChannel.equalsIgnoreCase("returnSkins")) {
+                                Player player = Bukkit.getPlayer(in.readUTF());
+                                if (player == null)
+                                    return;
+
+                                int page = in.readInt();
+
+                                short len = in.readShort();
+                                byte[] msgBytes = new byte[len];
+                                in.readFully(msgBytes);
+
+                                Map<String, GenericProperty> skinList = convertToObject(msgBytes);
+
+                                // convert
+                                Map<String, IProperty> newSkinList = new TreeMap<>();
+
+                                skinList.forEach((name, property) -> newSkinList.put(name, SkinsRestorerAPI.getApi().createPlatformProperty(property.getName(), property.getValue(), property.getSignature())));
+
+                                ++page; // start counting from 1
+                                Inventory inventory = SkinsGUI.createGUI(this, page, newSkinList);
+
+                                Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> player.openInventory(inventory));
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
-
-                        if (subChannel.equalsIgnoreCase("returnSkins")) {
-                            Player player = Bukkit.getPlayer(in.readUTF());
-                            if (player == null)
-                                return;
-
-                            int page = in.readInt();
-
-                            short len = in.readShort();
-                            byte[] msgBytes = new byte[len];
-                            in.readFully(msgBytes);
-
-                            Map<String, GenericProperty> skinList = convertToObject(msgBytes);
-
-                            //convert
-                            Map<String, IProperty> newSkinList = new TreeMap<>();
-
-                            skinList.forEach((name, property) -> newSkinList.put(name, SkinsRestorerAPI.getApi().createPlatformProperty(property.getName(), property.getValue(), property.getSignature())));
-
-                            ++page; // start counting from 1
-                            Inventory inventory = SkinsGUI.createGUI(this, page, newSkinList);
-
-                            Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> player.openInventory(inventory));
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                });
-            });
+                    }));
         } else {
             // Init config files
             Config.load(dataFolderPath, getResource("config.yml"), srLogger);
@@ -306,45 +303,37 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
     }
 
     public void requestSkinsFromBungeeCord(Player player, int page) {
-        try {
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            DataOutputStream out = new DataOutputStream(bytes);
-
+        sendToMessageChannel(player, out -> {
             out.writeUTF("getSkins");
             out.writeUTF(player.getName());
             out.writeInt(page); // Page
-
-            player.sendPluginMessage(this, "sr:messagechannel", bytes.toByteArray());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        });
     }
 
     public void requestSkinClearFromBungeeCord(Player player) {
-        try {
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            DataOutputStream out = new DataOutputStream(bytes);
-
+        sendToMessageChannel(player, out -> {
             out.writeUTF("clearSkin");
             out.writeUTF(player.getName());
-
-            player.sendPluginMessage(this, "sr:messagechannel", bytes.toByteArray());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        });
     }
 
     public void requestSkinSetFromBungeeCord(Player player, String skin) {
-        try {
-            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-            DataOutputStream out = new DataOutputStream(bytes);
-
+        sendToMessageChannel(player, out -> {
             out.writeUTF("setSkin");
             out.writeUTF(player.getName());
             out.writeUTF(skin);
+        });
+    }
+
+    private void sendToMessageChannel(Player player, IOExceptionConsumer<DataOutputStream> consumer) {
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        DataOutputStream out = new DataOutputStream(bytes);
+
+        try {
+            consumer.accept(out);
 
             player.sendPluginMessage(this, "sr:messagechannel", bytes.toByteArray());
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -360,14 +349,17 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
     }
 
     private boolean initStorage() {
+        SkinStorage storage = new SkinStorage(srLogger, mojangAPI, mineSkinAPI);
+        this.skinStorage = storage;
+
         // Initialise SkinStorage
-        if (!SharedMethods.initStorage(srLogger, skinStorage, dataFolderPath)) {
+        if (!SharedMethods.initStorage(srLogger, storage, dataFolderPath)) {
             Bukkit.getPluginManager().disablePlugin(this);
             return false;
         }
 
         // Preload default skins
-        Bukkit.getScheduler().runTaskAsynchronously(this, skinStorage::preloadDefaultSkins);
+        Bukkit.getScheduler().runTaskAsynchronously(this, storage::preloadDefaultSkins);
         return true;
     }
 

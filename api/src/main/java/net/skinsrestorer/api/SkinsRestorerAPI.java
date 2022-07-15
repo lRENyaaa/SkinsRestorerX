@@ -42,10 +42,10 @@ public abstract class SkinsRestorerAPI {
     private final IMojangAPI mojangAPI;
     private final IMineSkinAPI mineSkinAPI;
     private final ISkinStorage skinStorage;
-    private final IPropertyFactory propertyFactory;
-    private final Gson gson = new Gson();
     @Getter(value = AccessLevel.PROTECTED)
     private final IWrapperFactory wrapperFactory;
+    private final IPropertyFactory propertyFactory;
+    private final Gson gson = new Gson();
 
     protected SkinsRestorerAPI(IMojangAPI mojangAPI, IMineSkinAPI mineSkinAPI, ISkinStorage skinStorage, IWrapperFactory wrapperFactory, IPropertyFactory propertyFactory) {
         if (SkinsRestorerAPI.api == null)
@@ -59,8 +59,11 @@ public abstract class SkinsRestorerAPI {
     }
 
     private static synchronized void setInstance(SkinsRestorerAPI api) {
-        if (SkinsRestorerAPI.api == null)
+        if (SkinsRestorerAPI.api == null) {
             SkinsRestorerAPI.api = api;
+        } else {
+            throw new IllegalStateException("SkinsRestorerAPI is already initialized!");
+        }
     }
 
     /**
@@ -82,7 +85,7 @@ public abstract class SkinsRestorerAPI {
      * @return The players custom skin name if set or null if not set
      */
     public String getSkinName(String playerName) {
-        return getSkinStorage().getSkinOfPlayer(playerName).orElse(null);
+        return skinStorage.getSkinOfPlayer(playerName).orElse(null);
     }
 
     /**
@@ -102,7 +105,7 @@ public abstract class SkinsRestorerAPI {
      * @param skinName   Skin name
      **/
     public void setSkinName(String playerName, String skinName) {
-        getSkinStorage().setSkinOfPlayer(playerName, skinName);
+        skinStorage.setSkinOfPlayer(playerName, skinName);
     }
 
     /**
@@ -111,7 +114,7 @@ public abstract class SkinsRestorerAPI {
      * @param skinName Skin name
      **/
     public IProperty getSkinData(String skinName) {
-        return getSkinStorage().getSkinData(skinName).orElse(null);
+        return skinStorage.getSkinData(skinName).orElse(null);
     }
 
     /**
@@ -139,7 +142,7 @@ public abstract class SkinsRestorerAPI {
      * @param textures Property object
      */
     public void setSkinData(String skinName, IProperty textures) {
-        getSkinStorage().setSkinData(skinName, textures);
+        skinStorage.setSkinData(skinName, textures);
     }
 
     /**
@@ -151,7 +154,7 @@ public abstract class SkinsRestorerAPI {
      * @param timestamp timestamp long in millis
      */
     public void setSkinData(String skinName, IProperty textures, long timestamp) {
-        getSkinStorage().setSkinData(skinName, textures, timestamp);
+        skinStorage.setSkinData(skinName, textures, timestamp);
     }
 
     /**
@@ -237,7 +240,7 @@ public abstract class SkinsRestorerAPI {
 
     public void setSkin(String playerName, String skinName) throws SkinRequestException {
         setSkinName(playerName, skinName);
-        getSkinStorage().getSkinForPlayer(skinName);
+        skinStorage.getSkinForPlayer(skinName);
     }
 
     public IProperty createPlatformProperty(IProperty property) {
@@ -257,13 +260,7 @@ public abstract class SkinsRestorerAPI {
     }
 
     public void removeSkin(String playerName) {
-        getSkinStorage().removeSkinOfPlayer(playerName);
-    }
-
-    private ISkinStorage getSkinStorage() {
-        if (skinStorage.isInitialized()) {
-            return skinStorage;
-        } else throw new IllegalStateException("SkinStorage is not initialized. Is SkinsRestorer in proxy mode?");
+        skinStorage.removeSkinOfPlayer(playerName);
     }
 
     public abstract void applySkin(PlayerWrapper playerWrapper) throws SkinRequestException;

@@ -68,7 +68,7 @@ public abstract class SharedPluginMessageListener {
             ISRProxyPlayer player = optional.get();
 
             switch (subChannel) {
-                //sr:messagechannel
+                // sr:messagechannel
                 case "getSkins":
                     int page = in.readInt();
                     if (page > 999)
@@ -110,6 +110,18 @@ public abstract class SharedPluginMessageListener {
                 case "setSkin":
                     String skin = in.readUTF();
                     plugin.getSkinCommand().onSkinSetOther(player, player, skin, null);
+                    break;
+                case "getSkinOfPlayer":
+                    break;
+                case "getSkinForPlayer":
+                    break;
+                case "removeSkinOfPlayer":
+                    break;
+                case "setSkinOfPlayer":
+                    break;
+                case "getSkinData":
+                    break;
+                case "setSkinData":
                     break;
                 default:
                     break;

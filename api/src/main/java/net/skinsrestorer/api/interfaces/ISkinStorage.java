@@ -22,6 +22,7 @@ package net.skinsrestorer.api.interfaces;
 import net.skinsrestorer.api.exception.SkinRequestException;
 import net.skinsrestorer.api.property.IProperty;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -83,7 +84,9 @@ public interface ISkinStorage {
      *
      * @see #setSkinData(String, IProperty, long)
      */
-    void setSkinData(String skinName, IProperty textures);
+    default void setSkinData(String skinName, IProperty textures) {
+        setSkinData(skinName, textures, System.currentTimeMillis());
+    }
 
     /**
      * Saves skin data to database
@@ -94,5 +97,5 @@ public interface ISkinStorage {
      */
     void setSkinData(String skinName, IProperty textures, long timestamp);
 
-    boolean isInitialized();
+    Map<String, IProperty> getSkins(int skinOffset);
 }

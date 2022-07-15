@@ -375,7 +375,7 @@ public class SkinStorage implements ISkinStorage {
 
     // TODO: CUSTOM_GUI
     // seems to be that crs order is ignored...
-    public Map<String, IProperty> getSkins(int number) {
+    public Map<String, IProperty> getSkins(int skinOffset) {
         //Using mysql
         Map<String, IProperty> list = new TreeMap<>();
 
@@ -401,7 +401,7 @@ public class SkinStorage implements ISkinStorage {
             int i = 0;
             try {
                 do {
-                    if (i >= number)
+                    if (i >= skinOffset)
                         list.put(crs.getString("Nick").toLowerCase(), SkinsRestorerAPI.getApi().createPlatformProperty(IProperty.TEXTURES_NAME, crs.getString("Value"), crs.getString("Signature")));
                     i++;
                 } while (crs.next());
@@ -422,7 +422,7 @@ public class SkinStorage implements ISkinStorage {
 
             int i = 0;
             for (String skinName : skinNames) {
-                if (i >= number) {
+                if (i >= skinOffset) {
                     if (Config.CUSTOM_GUI_ONLY) { //Show only Config.CUSTOM_GUI_SKINS in the gui
                         for (String GuiSkins : Config.CUSTOM_GUI_SKINS) {
                             if (skinName.toLowerCase().contains(GuiSkins.toLowerCase()))

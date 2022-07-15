@@ -116,10 +116,10 @@ public class SkinsGUI implements InventoryHolder {
     public static Inventory createGUI(SkinsRestorer plugin, int page) {
         if (page > 999)
             page = 999;
+
         int skinNumber = 36 * page;
 
-        Map<String, IProperty> skinsList = plugin.getSkinStorage().getSkins(skinNumber);
-        return createGUI(plugin, page, skinsList);
+        return createGUI(plugin, page, plugin.getSkinStorage().getSkins(skinNumber));
     }
 
     private static ItemStack createSkull(SRLogger log, String name, IProperty property) {
