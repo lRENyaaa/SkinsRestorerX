@@ -247,9 +247,7 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
                                     return;
 
                                 requestSkinsFromBungeeCord(player, 0);
-                            }
-
-                            if (subChannel.equalsIgnoreCase("returnSkins")) {
+                            } else if (subChannel.equalsIgnoreCase("returnSkins")) {
                                 Player player = Bukkit.getPlayer(in.readUTF());
                                 if (player == null)
                                     return;
@@ -271,6 +269,10 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
                                 Inventory inventory = SkinsGUI.createGUI(this, page, newSkinList);
 
                                 Bukkit.getScheduler().scheduleSyncDelayedTask(this, () -> player.openInventory(inventory));
+                            } else if (subChannel.equalsIgnoreCase("proxyAPI")) {
+                                if (skinStorage instanceof ProxySkinStorage) {
+                                    ((ProxySkinStorage) skinStorage).handleMessage(in);
+                                }
                             }
                         } catch (Exception e) {
                             e.printStackTrace();

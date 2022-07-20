@@ -10,13 +10,17 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 
 @RequiredArgsConstructor
 public class ProxySkinStorage implements ISkinStorage {
     private final SkinsRestorer plugin;
+    private final Map<UUID, CompletableFuture<?>> map = new ConcurrentHashMap<>();
 
     @Override
     public Optional<String> getSkinOfPlayer(String playerName) {
@@ -80,6 +84,16 @@ public class ProxySkinStorage implements ISkinStorage {
             List<Player> players = new ArrayList<>(Bukkit.getOnlinePlayers());
             players.get(ThreadLocalRandom.current().nextInt(players.size()))
                     .sendPluginMessage(plugin, "sr:messagechannel", bytes.toByteArray());
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void handleMessage(DataInputStream dataInputStream) {
+        try {
+            String messageId = dataInputStream.readUTF();
+            UUID messageIdUuid = UUID.fromString(messageId);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
