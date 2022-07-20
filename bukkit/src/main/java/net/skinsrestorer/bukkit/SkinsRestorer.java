@@ -208,7 +208,6 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
         if (proxyMode) {
             this.skinStorage = new ProxySkinStorage(this);
 
-            Bukkit.getMessenger().registerOutgoingPluginChannel(this, "sr:skinchange");
             Bukkit.getMessenger().registerIncomingPluginChannel(this, "sr:skinchange", (channel, player, message) ->
                     Bukkit.getScheduler().runTaskAsynchronously(this, () -> {
                         DataInputStream in = new DataInputStream(new ByteArrayInputStream(message));
@@ -218,7 +217,12 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
 
                             if (subChannel.equalsIgnoreCase("SkinUpdate")) {
                                 try {
-                                    skinsRestorerAPI.applySkin(new PlayerWrapper(player), SkinsRestorerAPI.getApi().createPlatformProperty(in.readUTF(), in.readUTF(), in.readUTF()));
+                                    String name = in.readUTF();
+                                    String value = in.readUTF();
+                                    String signature = in.readUTF();
+
+                                    skinsRestorerAPI.applySkin(new PlayerWrapper(player),
+                                            SkinsRestorerAPI.getApi().createPlatformProperty(name, value, signature));
                                 } catch (IOException ignored) {
                                 }
 

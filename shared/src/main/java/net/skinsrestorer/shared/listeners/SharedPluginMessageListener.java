@@ -47,7 +47,7 @@ public abstract class SharedPluginMessageListener {
         if (event.isCancelled())
             return;
 
-        if (!event.getTag().equals("sr:messagechannel") && !event.getTag().equals("sr:skinchange"))
+        if (!event.getTag().equals("sr:messagechannel"))
             return;
 
         if (!event.isServerConnection()) {
