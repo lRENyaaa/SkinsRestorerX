@@ -64,6 +64,7 @@ import net.skinsrestorer.velocity.listener.GameProfileRequest;
 import net.skinsrestorer.velocity.listener.PluginMessageListener;
 import net.skinsrestorer.velocity.utils.VelocityProperty;
 import net.skinsrestorer.velocity.utils.WrapperVelocity;
+import org.bstats.charts.SimplePie;
 import org.bstats.charts.SingleLineChart;
 import org.bstats.velocity.Metrics;
 import org.inventivetalent.update.spiget.UpdateCallback;
@@ -122,6 +123,7 @@ public class SkinsRestorer implements ISRProxyPlugin {
         metrics.addCustomChart(new SingleLineChart("minetools_calls", metricsCounter::collectMinetoolsCalls));
         metrics.addCustomChart(new SingleLineChart("mojang_calls", metricsCounter::collectMojangCalls));
         metrics.addCustomChart(new SingleLineChart("ashcon_calls", metricsCounter::collectAshconCalls));
+        metrics.addCustomChart(new SimplePie("uses_mysql", metricsCounter::usesMySQL));
 
         checkUpdateInit(() -> {
             updateChecker = new UpdateCheckerGitHub(2124, getVersion(), srLogger, "SkinsRestorerUpdater/Velocity");

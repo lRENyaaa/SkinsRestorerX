@@ -19,11 +19,22 @@
  */
 package net.skinsrestorer.shared.utils;
 
+import net.skinsrestorer.shared.storage.Config;
+
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MetricsCounter {
+    public String usesMySQL() {
+        try {
+            return String.valueOf(Config.MYSQL_ENABLED);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+
     private final Map<Service, AtomicInteger> map = new EnumMap<>(Service.class);
 
     public void increment(Service service) {

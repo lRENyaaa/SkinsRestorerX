@@ -58,6 +58,7 @@ import net.skinsrestorer.shared.utils.log.SRLogger;
 import net.skinsrestorer.spigot.SpigotUtil;
 import net.skinsrestorer.v1_7.BukkitLegacyProperty;
 import org.bstats.bukkit.Metrics;
+import org.bstats.charts.SimplePie;
 import org.bstats.charts.SingleLineChart;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -184,6 +185,8 @@ public class SkinsRestorer extends JavaPlugin implements ISRPlugin {
         metrics.addCustomChart(new SingleLineChart("minetools_calls", metricsCounter::collectMinetoolsCalls));
         metrics.addCustomChart(new SingleLineChart("mojang_calls", metricsCounter::collectMojangCalls));
         metrics.addCustomChart(new SingleLineChart("ashcon_calls", metricsCounter::collectAshconCalls));
+        metrics.addCustomChart(new SimplePie("uses_mysql", metricsCounter::usesMySQL));
+        metrics.addCustomChart(new SimplePie("proxy_mode", () -> String.valueOf(proxyMode))); // Bukkit only
 
         try {
             skinApplierBukkit = new SkinApplierBukkit(this, srLogger);
