@@ -1,0 +1,15 @@
+net.skinsrestorer.api
+net.skinsrestorer.api.bukkit
+net.skinsrestorer.api.bukkit.events
+net.skinsrestorer.api.bungeecord.events
+net.skinsrestorer.api.exception
+net.skinsrestorer.api.interfaces
+net.skinsrestorer.api.model
+net.skinsrestorer.api.property
+net.skinsrestorer.api.reflection
+net.skinsrestorer.api.reflection.access
+net.skinsrestorer.api.reflection.exception
+net.skinsrestorer.api.reflection.reflect
+net.skinsrestorer.api.serverinfo
+net.skinsrestorer.api.util
+net.skinsrestorer.api.velocity.events
