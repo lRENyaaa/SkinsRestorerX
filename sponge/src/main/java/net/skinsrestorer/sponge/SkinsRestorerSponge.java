@@ -24,15 +24,14 @@ import co.aikar.commands.SpongeCommandManager;
 import lombok.Getter;
 import net.skinsrestorer.api.interfaces.IWrapperFactory;
 import net.skinsrestorer.api.property.GenericProperty;
+import net.skinsrestorer.api.property.IProperty;
 import net.skinsrestorer.shared.exception.InitializeException;
-import net.skinsrestorer.shared.injector.OnlinePlayersMethod;
 import net.skinsrestorer.shared.interfaces.ISRPlayer;
 import net.skinsrestorer.shared.plugin.SkinsRestorerServerShared;
 import net.skinsrestorer.shared.storage.CallableValue;
 import net.skinsrestorer.shared.utils.SharedMethods;
 import net.skinsrestorer.shared.utils.connections.MojangAPI;
 import net.skinsrestorer.shared.utils.log.Slf4jLoggerImpl;
-import net.skinsrestorer.sponge.commands.SkinCommand;
 import net.skinsrestorer.sponge.commands.SrCommand;
 import net.skinsrestorer.sponge.listeners.LoginListener;
 import net.skinsrestorer.sponge.utils.WrapperSponge;
@@ -43,10 +42,12 @@ import org.spongepowered.api.Sponge;
 import org.spongepowered.api.entity.living.player.Player;
 import org.spongepowered.api.event.network.ClientConnectionEvent;
 import org.spongepowered.api.plugin.PluginContainer;
+import org.spongepowered.api.profile.property.ProfileProperty;
 
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -105,8 +106,6 @@ public class SkinsRestorerSponge extends SkinsRestorerServerShared {
         Sponge.getEventManager().registerListener(pluginInstance, ClientConnectionEvent.Auth.class, injector.newInstance(LoginListener.class));
 
         // Init commands
-        CommandManager<?, ?, ?, ?, ?, ?> manager = sharedInitCommands();
-
         manager.registerCommand(injector.getSingleton(SkinCommand.class));
         manager.registerCommand(injector.newInstance(SrCommand.class));
 
@@ -144,11 +143,6 @@ public class SkinsRestorerSponge extends SkinsRestorerServerShared {
         game.getScheduler().createTaskBuilder().execute(runnable).interval(interval, timeUnit).delay(delay, timeUnit).submit(pluginInstance);
     }
 
-    @Override
-    protected CommandManager<?, ?, ?, ?, ?, ?> createCommandManager() {
-        return new SpongeCommandManager(pluginContainer);
-    }
-
     private static class WrapperFactorySponge implements IWrapperFactory {
         @Override
         public String getPlayerName(Object playerInstance) {
@@ -160,5 +154,24 @@ public class SkinsRestorerSponge extends SkinsRestorerServerShared {
                 throw new IllegalArgumentException("Player instance is not valid!");
             }
         }
+    }
+
+
+    @Override
+    public String getPlatformVersion() {
+        return game.getPlatform().getMinecraftVersion().getName();
+    }
+
+    @Override
+    public String getProxyModeInfo() {
+        return "Sponge-Plugin";
+    }
+
+    @Override
+    public List<IProperty> getPropertiesOfPlayer(ISRPlayer player) {
+        Collection<ProfileProperty> properties = player.getWrapper().get(Player.class).getProfile().getPropertyMap().get(IProperty.TEXTURES_NAME);
+        return properties.stream()
+                .map(property -> new GenericProperty(property.getName(), property.getValue(), property.getSignature().orElse("")))
+                .collect(Collectors.toList());
     }
 }

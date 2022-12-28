@@ -19,8 +19,12 @@
  */
 package net.skinsrestorer.shared.interfaces;
 
+import net.skinsrestorer.api.property.IProperty;
+
 import java.io.InputStream;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 public interface ISRPlugin {
@@ -47,4 +51,12 @@ public interface ISRPlugin {
     void loadLocales();
 
     boolean isOutdated();
+
+    Optional<ISRPlayer> getPlayer(String name);
+
+    String getPlatformVersion();
+
+    String getProxyModeInfo();
+
+    List<IProperty> getPropertiesOfPlayer(ISRPlayer player);
 }

@@ -19,32 +19,35 @@
  */
 package net.skinsrestorer.shared.commands;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandHelp;
-import lombok.RequiredArgsConstructor;
-import net.skinsrestorer.shared.interfaces.ISRCommandSender;
+import net.skinsrestorer.shared.interfaces.ISRPlayer;
 import net.skinsrestorer.shared.interfaces.ISRProxyPlayer;
 import net.skinsrestorer.shared.listeners.SharedPluginMessageListener;
 import net.skinsrestorer.shared.storage.CooldownStorage;
 import net.skinsrestorer.shared.storage.Message;
+import net.skinsrestorer.shared.storage.SkinStorage;
+import net.skinsrestorer.shared.utils.log.SRLogger;
 
-@RequiredArgsConstructor
-public abstract class SharedProxyGUICommand extends BaseCommand {
-    private final CooldownStorage cooldownStorage;
-    private final SharedPluginMessageListener pluginMessageListener;
+import javax.inject.Inject;
 
-    protected void onHelp(ISRCommandSender sender, CommandHelp help) {
-        sender.sendMessage("SkinsRestorer Help");
-        help.showHelp();
-    }
+public final class SharedProxyGUICommand extends SharedGUICommand {
+    @Inject
+    private CooldownStorage cooldownStorage;
+    @Inject
+    private SkinStorage skinStorage;
+    @Inject
+    private SRLogger srLogger;
 
-    protected void onDefault(ISRProxyPlayer player) {
-        if (!player.hasPermission("skinsrestorer.bypasscooldown") && cooldownStorage.hasCooldown(player.getName())) {
-            player.sendMessage(Message.SKIN_COOLDOWN, String.valueOf(cooldownStorage.getCooldownSeconds(player.getName())));
+    public int onDefault(ISRPlayer player) {
+        if (!(player instanceof ISRProxyPlayer)) {
+            throw new IllegalStateException("The platform should only have proxy players");
+        }
+
+        if (!player.hasPermission("skinsrestorer.bypasscooldown") && cooldownStorage.hasCooldown(player.getUniqueId())) {
+            player.sendMessage(Message.SKIN_COOLDOWN, String.valueOf(cooldownStorage.getCooldownSeconds(player.getUniqueId())));
             return;
         }
         player.sendMessage(Message.SKINSMENU_OPEN);
 
-        pluginMessageListener.sendPage(0, player);
+        SharedPluginMessageListener.sendPage(0, (ISRProxyPlayer) player, skinStorage, srLogger);
     }
 }

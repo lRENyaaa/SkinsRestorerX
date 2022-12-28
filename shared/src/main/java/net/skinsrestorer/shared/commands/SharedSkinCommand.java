@@ -20,9 +20,6 @@
 package net.skinsrestorer.shared.commands;
 
 import ch.jalu.configme.SettingsManager;
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandHelp;
-import co.aikar.commands.InvalidCommandArgument;
 import lombok.RequiredArgsConstructor;
 import net.skinsrestorer.api.SkinVariant;
 import net.skinsrestorer.api.SkinsRestorerAPI;
@@ -40,51 +37,36 @@ import net.skinsrestorer.shared.storage.SkinStorage;
 import net.skinsrestorer.shared.utils.C;
 import net.skinsrestorer.shared.utils.log.SRLogLevel;
 import net.skinsrestorer.shared.utils.log.SRLogger;
+import org.jetbrains.annotations.Nullable;
 
+import javax.inject.Inject;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static net.skinsrestorer.shared.utils.SharedMethods.getRootCause;
 
 @RequiredArgsConstructor
-public abstract class SharedSkinCommand extends BaseCommand {
-    protected final ISRPlugin plugin;
-    private final SettingsManager settings;
-    private final CooldownStorage cooldownStorage;
-    private final SkinStorage skinStorage;
-    private final SkinsRestorerLocale locale;
-    private final SRLogger logger;
+public final class SharedSkinCommand {
+    @Inject
+    private ISRPlugin plugin;
+    @Inject
+    private SettingsManager settings;
+    @Inject
+    private CooldownStorage cooldownStorage;
+    @Inject
+    private SkinStorage skinStorage;
+    @Inject
+    private SkinsRestorerLocale locale;
+    @Inject
+    private SRLogger logger;
 
-    @SuppressWarnings("deprecation")
-    protected void onDefault(ISRCommandSender sender) {
-        if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
-
-        onHelp(sender, getCurrentCommandManager().generateCommandHelp());
-    }
-
-    protected void onSkinSetShort(ISRPlayer player, String skin) {
-        if (!CommandUtil.isAllowedToExecute(player, settings)) return;
-
-        onSkinSetOther(player, player, skin, null);
-    }
-
-    protected void onHelp(ISRCommandSender sender, CommandHelp help) {
-        if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
-
-        if (settings.getProperty(Config.ENABLE_CUSTOM_HELP)) {
-            sendHelp(sender);
-        } else {
-            help.showHelp();
-        }
-    }
-
-    protected void onSkinClear(ISRPlayer player) {
+    public int onSkinClear(ISRPlayer player) {
         if (!CommandUtil.isAllowedToExecute(player, settings)) return;
 
         onSkinClearOther(player, player);
     }
 
-    public void onSkinClearOther(ISRCommandSender sender, ISRPlayer target) {
+    public int onSkinClearOther(ISRCommandSender sender, ISRPlayer target) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -117,19 +99,19 @@ public abstract class SharedSkinCommand extends BaseCommand {
         });
     }
 
-    protected void onSkinSearch(ISRCommandSender sender, String searchString) {
+    public int onSkinSearch(ISRCommandSender sender, String searchString) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         sender.sendMessage(Message.SKIN_SEARCH_MESSAGE, searchString);
     }
 
-    protected void onSkinUpdate(ISRPlayer player) {
+    public int onSkinUpdate(ISRPlayer player) {
         if (!CommandUtil.isAllowedToExecute(player, settings)) return;
 
         onSkinUpdateOther(player, player);
     }
 
-    public void onSkinUpdateOther(ISRCommandSender sender, ISRPlayer player) {
+    public int onSkinUpdateOther(ISRCommandSender sender, ISRPlayer player) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -172,16 +154,13 @@ public abstract class SharedSkinCommand extends BaseCommand {
         });
     }
 
-    protected void onSkinSet(ISRPlayer player, String[] skin) {
+    public int onSkinSet(ISRPlayer player, String skin) {
         if (!CommandUtil.isAllowedToExecute(player, settings)) return;
 
-        if (skin.length == 0)
-            throw new InvalidCommandArgument(true);
-
-        onSkinSetOther(player, player, skin[0], null);
+        onSkinSetOther(player, player, skin, null);
     }
 
-    public void onSkinSetOther(ISRCommandSender sender, ISRPlayer player, String skin, SkinVariant skinVariant) {
+    public int onSkinSetOther(ISRCommandSender sender, ISRPlayer player, String skin, @Nullable SkinVariant skinVariant) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -197,7 +176,7 @@ public abstract class SharedSkinCommand extends BaseCommand {
         });
     }
 
-    protected void onSkinSetUrl(ISRPlayer player, String url, SkinVariant skinVariant) {
+    public int onSkinUrl(ISRPlayer player, String url, SkinVariant skinVariant) {
         if (!CommandUtil.isAllowedToExecute(player, settings)) return;
 
         if (!C.validUrl(url)) {
@@ -208,7 +187,7 @@ public abstract class SharedSkinCommand extends BaseCommand {
         onSkinSetOther(player, player, url, skinVariant);
     }
 
-    protected void sendHelp(ISRCommandSender sender) {
+    private void sendHelp(ISRCommandSender sender) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         String srLine = locale.getMessage(sender, Message.SR_LINE);
@@ -221,7 +200,7 @@ public abstract class SharedSkinCommand extends BaseCommand {
             sender.sendMessage(srLine);
     }
 
-    protected boolean setSkin(ISRCommandSender sender, ISRPlayer player, String skin, boolean restoreOnFailure, SkinVariant skinVariant) {
+    private boolean setSkin(ISRCommandSender sender, ISRPlayer player, String skin, boolean restoreOnFailure, SkinVariant skinVariant) {
         // Escape "null" skin, this did cause crash in the past for some waterfall instances
         // TODO: resolve this in a different way
         if (skin.equalsIgnoreCase("null")) {

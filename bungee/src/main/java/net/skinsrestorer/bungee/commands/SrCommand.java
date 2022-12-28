@@ -32,7 +32,6 @@ import net.skinsrestorer.bungee.SkinApplierBungeeShared;
 import net.skinsrestorer.bungee.SkinsRestorerBungee;
 import net.skinsrestorer.bungee.utils.WrapperBungee;
 import net.skinsrestorer.shared.commands.SharedSRCommand;
-import net.skinsrestorer.shared.injector.OnlinePlayersMethod;
 import net.skinsrestorer.shared.interfaces.ISRPlayer;
 import net.skinsrestorer.shared.storage.CallableValue;
 import net.skinsrestorer.shared.storage.SkinStorage;
@@ -55,7 +54,7 @@ public class SrCommand extends SharedSRCommand {
 
     @Inject
     public SrCommand(SkinsRestorerBungee plugin, MojangAPI mojangAPI, SkinStorage skinStorage, SettingsManager settings, SRLogger logger, SkinApplierBungeeShared skinApplier, WrapperBungee wrapper,
-                     @OnlinePlayersMethod CallableValue<Collection<ISRPlayer>> onlinePlayersFunction) {
+                     CallableValue<Collection<ISRPlayer>> onlinePlayersFunction) {
         super(plugin, mojangAPI, skinStorage, settings, logger, onlinePlayersFunction);
         this.plugin = plugin;
         this.skinApplier = skinApplier;
@@ -137,28 +136,5 @@ public class SrCommand extends SharedSRCommand {
     @Syntax(" <targetdaysold>")
     public void onPurgeOldData(CommandSender sender, int days) {
         onPurgeOldData(wrapper.commandSender(sender), days);
-    }
-
-    @Override
-    public String getPlatformVersion() {
-        return plugin.getProxy().getVersion();
-    }
-
-    @Override
-    public String getProxyMode() {
-        return "Bungee-Plugin";
-    }
-
-    @Override
-    public List<IProperty> getPropertiesOfPlayer(ISRPlayer player) {
-        List<IProperty> props = skinApplier.getProperties(player.getWrapper().get(ProxiedPlayer.class));
-
-        if (props == null) {
-            return Collections.emptyList();
-        } else {
-            return props.stream()
-                    .map(property -> new GenericProperty(property.getName(), property.getValue(), property.getSignature()))
-                    .collect(Collectors.toList());
-        }
     }
 }

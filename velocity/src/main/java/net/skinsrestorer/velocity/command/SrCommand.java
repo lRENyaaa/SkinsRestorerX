@@ -29,7 +29,6 @@ import com.velocitypowered.api.util.GameProfile;
 import net.skinsrestorer.api.SkinVariant;
 import net.skinsrestorer.api.property.IProperty;
 import net.skinsrestorer.shared.commands.SharedSRCommand;
-import net.skinsrestorer.shared.injector.OnlinePlayersMethod;
 import net.skinsrestorer.shared.interfaces.ISRPlayer;
 import net.skinsrestorer.shared.storage.CallableValue;
 import net.skinsrestorer.shared.storage.SkinStorage;
@@ -54,7 +53,7 @@ public class SrCommand extends SharedSRCommand {
 
     @Inject
     public SrCommand(SkinsRestorerVelocity plugin, MojangAPI mojangAPI, SkinStorage skinStorage, SettingsManager settings, SRLogger logger, WrapperVelocity wrapper,
-                     @OnlinePlayersMethod CallableValue<Collection<ISRPlayer>> onlinePlayersFunction) {
+                     CallableValue<Collection<ISRPlayer>> onlinePlayersFunction) {
         super(plugin, mojangAPI, skinStorage, settings, logger, onlinePlayersFunction);
         this.plugin = plugin;
         this.wrapper = wrapper;
@@ -136,26 +135,5 @@ public class SrCommand extends SharedSRCommand {
     @Syntax(" <targetdaysold>")
     public void onPurgeOldData(CommandSource source, int days) {
         onPurgeOldData(wrapper.commandSender(source), days);
-    }
-
-    @Override
-    public String getPlatformVersion() {
-        return plugin.getProxy().getVersion().getVersion();
-    }
-
-    @Override
-    public String getProxyMode() {
-        return "Velocity-Plugin";
-    }
-
-    @Override
-    public List<IProperty> getPropertiesOfPlayer(ISRPlayer player) {
-        List<GameProfile.Property> prop = player.getWrapper().get(Player.class).getGameProfileProperties();
-
-        if (prop == null) {
-            return Collections.emptyList();
-        }
-
-        return prop.stream().map(VelocityProperty::new).collect(Collectors.toList());
     }
 }

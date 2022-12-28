@@ -43,24 +43,6 @@ public abstract class SkinsRestorerServerShared extends SkinsRestorerShared impl
         injector.register(ISRServerPlugin.class, this);
     }
 
-    /**
-     * Legacy method of converting SkinGUI plugin message data to a map.
-     *
-     * @deprecated Use {@link #convertToObjectV2(byte[])} instead. Will be removed in 15.0.0
-     */
-    @SuppressWarnings("unchecked")
-    protected static Map<String, GenericProperty> convertToObject(byte[] byteArr) {
-        try {
-            ByteArrayInputStream bis = new ByteArrayInputStream(byteArr);
-            ObjectInputStream ois = new ObjectInputStream(bis);
-
-            return (Map<String, GenericProperty>) ois.readObject();
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
-            return Collections.emptyMap();
-        }
-    }
-
     @SuppressWarnings("unchecked")
     protected static Map<String, String> convertToObjectV2(byte[] byteArr) {
         try {
@@ -71,5 +53,10 @@ public abstract class SkinsRestorerServerShared extends SkinsRestorerShared impl
             e.printStackTrace();
             return Collections.emptyMap();
         }
+    }
+
+    @Override
+    public String getProxyModeInfo() {
+        return String.valueOf(proxyMode);
     }
 }

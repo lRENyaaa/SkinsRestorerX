@@ -19,31 +19,24 @@
  */
 package net.skinsrestorer.bukkit.commands;
 
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandHelp;
-import co.aikar.commands.annotation.CommandAlias;
-import co.aikar.commands.annotation.CommandPermission;
-import co.aikar.commands.annotation.Default;
-import co.aikar.commands.annotation.HelpCommand;
 import net.skinsrestorer.bukkit.SkinsGUI;
 import net.skinsrestorer.bukkit.SkinsRestorerBukkit;
 import net.skinsrestorer.bukkit.utils.WrapperBukkit;
 import net.skinsrestorer.shared.SkinsRestorerLocale;
+import net.skinsrestorer.shared.commands.SharedGUICommand;
+import net.skinsrestorer.shared.commands.SharedSkinCommand;
 import net.skinsrestorer.shared.interfaces.ISRPlayer;
 import net.skinsrestorer.shared.storage.CooldownStorage;
 import net.skinsrestorer.shared.storage.Message;
 import net.skinsrestorer.shared.storage.SkinStorage;
 import net.skinsrestorer.shared.utils.log.SRLogger;
-import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 
 import javax.inject.Inject;
 
-@CommandAlias("skins")
-@CommandPermission("%skins")
 @SuppressWarnings({"unused"})
-public class GUICommand extends BaseCommand {
+public class GUICommand extends SharedGUICommand {
     @Inject
     private SkinsRestorerBukkit plugin;
     @Inject
@@ -55,31 +48,23 @@ public class GUICommand extends BaseCommand {
     @Inject
     private SkinStorage skinStorage;
     @Inject
-    private SkinCommand skinCommand;
-    @Inject
     private WrapperBukkit wrapper;
+    @Inject
+    private SharedSkinCommand skinCommand;
 
-    // TODO: is help even needed for /skins?
-    @HelpCommand
-    public static void onHelp(CommandSender sender, CommandHelp help) {
-        sender.sendMessage("SkinsRestorer Help");
-        help.showHelp();
-    }
-
-    @Default
-    @CommandPermission("%skins")
-    public void onDefault(Player player) {
-        ISRPlayer srPlayer = wrapper.player(player);
+    @Override
+    public int onDefault(ISRPlayer player) {
         plugin.runAsync(() -> {
-            if (!player.hasPermission("skinsrestorer.bypasscooldown") && cooldownStorage.hasCooldown(player.getName())) {
-                srPlayer.sendMessage(Message.SKIN_COOLDOWN, cooldownStorage.getCooldownSeconds(player.getName()));
+            if (!player.hasPermission("skinsrestorer.bypasscooldown") && cooldownStorage.hasCooldown(player.getUniqueId())) {
+                player.sendMessage(Message.SKIN_COOLDOWN, cooldownStorage.getCooldownSeconds(player.getUniqueId()));
                 return;
             }
-            srPlayer.sendMessage(Message.SKINSMENU_OPEN);
+            player.sendMessage(Message.SKINSMENU_OPEN);
 
             Inventory inventory = SkinsGUI.createGUI(new SkinsGUI.ServerGUIActions(plugin, skinCommand, locale, logger, plugin.getServer(), skinStorage, wrapper),
-                    locale, logger, plugin.getServer(), skinStorage, srPlayer, 0);
-            plugin.runSync(() -> player.openInventory(inventory));
+                    locale, logger, plugin.getServer(), skinStorage, player, 0);
+            plugin.runSync(() -> player.getWrapper().get(Player.class).openInventory(inventory));
         });
+        return 1;
     }
 }

@@ -20,8 +20,7 @@
 package net.skinsrestorer.shared.commands;
 
 import ch.jalu.configme.SettingsManager;
-import co.aikar.commands.BaseCommand;
-import co.aikar.commands.CommandHelp;
+import com.mojang.brigadier.CommandDispatcher;
 import lombok.RequiredArgsConstructor;
 import net.skinsrestorer.api.SkinVariant;
 import net.skinsrestorer.api.SkinsRestorerAPI;
@@ -50,7 +49,7 @@ import java.util.List;
 import static net.skinsrestorer.shared.utils.SharedMethods.getRootCause;
 
 @RequiredArgsConstructor
-public abstract class SharedSRCommand extends BaseCommand {
+public abstract class SharedSRCommand {
     protected final SkinsRestorerShared plugin;
     private final MojangAPI mojangAPI;
     private final SkinStorage skinStorage;
@@ -58,27 +57,20 @@ public abstract class SharedSRCommand extends BaseCommand {
     private final SRLogger logger;
     private final CallableValue<Collection<ISRPlayer>> onlinePlayersFunction;
 
-    protected void onHelp(ISRCommandSender sender, CommandHelp help) {
-        if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
-
-        help.showHelp();
-    }
-
     protected void reloadCustomHook() {
     }
 
-    protected void onReload(ISRCommandSender sender) {
+    public int onReload(ISRCommandSender sender) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         reloadCustomHook();
         plugin.loadConfig();
         plugin.loadLocales();
-        plugin.prepareACF();
 
         sender.sendMessage(Message.SUCCESS_ADMIN_RELOAD);
     }
 
-    protected void onStatus(ISRCommandSender sender) {
+    public int onStatus(ISRCommandSender sender) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -120,7 +112,7 @@ public abstract class SharedSRCommand extends BaseCommand {
         });
     }
 
-    protected void onDrop(ISRCommandSender sender, PlayerOrSkin playerOrSkin, String target) {
+    public int onDrop(ISRCommandSender sender, PlayerOrSkin playerOrSkin, String target) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -137,7 +129,7 @@ public abstract class SharedSRCommand extends BaseCommand {
         });
     }
 
-    protected void onProps(ISRCommandSender sender, ISRPlayer target) {
+    public int onProps(ISRCommandSender sender, ISRPlayer target) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -178,7 +170,7 @@ public abstract class SharedSRCommand extends BaseCommand {
         });
     }
 
-    protected void onApplySkin(ISRCommandSender sender, ISRPlayer target) {
+    public int onApplySkin(ISRCommandSender sender, ISRPlayer target) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -191,7 +183,7 @@ public abstract class SharedSRCommand extends BaseCommand {
         });
     }
 
-    protected void onCreateCustom(ISRCommandSender sender, String name, String skinUrl, SkinVariant skinVariant) {
+    public int onCreateCustom(ISRCommandSender sender, String name, String skinUrl, SkinVariant skinVariant) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -209,7 +201,7 @@ public abstract class SharedSRCommand extends BaseCommand {
         });
     }
 
-    protected void onSetSkinAll(ISRCommandSender sender, String skin, SkinVariant skinVariant) {
+    public int onSetSkinAll(ISRCommandSender sender, String skin, SkinVariant skinVariant) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -245,7 +237,7 @@ public abstract class SharedSRCommand extends BaseCommand {
         });
     }
 
-    protected void onApplySkinAll(ISRCommandSender sender) {
+    public int onApplySkinAll(ISRCommandSender sender) {
         if (!CommandUtil.isAllowedToExecute(sender, settings)) return;
 
         plugin.runAsync(() -> {
@@ -265,7 +257,7 @@ public abstract class SharedSRCommand extends BaseCommand {
         });
     }
 
-    protected void onPurgeOldData(ISRCommandSender sender, int days) {
+    public int onPurgeOldData(ISRCommandSender sender, int days) {
         plugin.runAsync(() -> {
             if (!sender.isConsole()) {
                 sender.sendMessage(Message.ONLY_ALLOWED_ON_CONSOLE);
@@ -285,7 +277,7 @@ public abstract class SharedSRCommand extends BaseCommand {
 
     protected abstract List<IProperty> getPropertiesOfPlayer(ISRPlayer player);
 
-    protected enum PlayerOrSkin {
+    public enum PlayerOrSkin {
         PLAYER,
         SKIN,
     }

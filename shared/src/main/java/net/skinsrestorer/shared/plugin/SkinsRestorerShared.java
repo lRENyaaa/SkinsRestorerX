@@ -23,14 +23,23 @@ import ch.jalu.configme.SettingsManager;
 import ch.jalu.configme.SettingsManagerBuilder;
 import ch.jalu.injector.Injector;
 import ch.jalu.injector.InjectorBuilder;
-import co.aikar.commands.CommandManager;
 import co.aikar.locales.LocaleManager;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.tree.CommandNode;
 import lombok.Getter;
+import net.skinsrestorer.api.SkinVariant;
 import net.skinsrestorer.api.SkinsRestorerAPI;
 import net.skinsrestorer.api.interfaces.IPropertyFactory;
 import net.skinsrestorer.api.interfaces.ISkinApplier;
 import net.skinsrestorer.api.interfaces.IWrapperFactory;
 import net.skinsrestorer.shared.SkinsRestorerLocale;
+import net.skinsrestorer.shared.bridgadier.*;
+import net.skinsrestorer.shared.commands.SharedGUICommand;
+import net.skinsrestorer.shared.commands.SharedSRCommand;
+import net.skinsrestorer.shared.commands.SharedSkinCommand;
 import net.skinsrestorer.shared.config.Config;
 import net.skinsrestorer.shared.config.DatabaseConfig;
 import net.skinsrestorer.shared.config.MineSkinConfig;
@@ -38,6 +47,7 @@ import net.skinsrestorer.shared.config.StorageConfig;
 import net.skinsrestorer.shared.exception.InitializeException;
 import net.skinsrestorer.shared.interfaces.ISRForeign;
 import net.skinsrestorer.shared.interfaces.ISRLogger;
+import net.skinsrestorer.shared.interfaces.ISRPlayer;
 import net.skinsrestorer.shared.interfaces.ISRPlugin;
 import net.skinsrestorer.shared.storage.CooldownStorage;
 import net.skinsrestorer.shared.storage.Message;
@@ -47,10 +57,7 @@ import net.skinsrestorer.shared.storage.adapter.FileAdapter;
 import net.skinsrestorer.shared.storage.adapter.MySQLAdapter;
 import net.skinsrestorer.shared.update.UpdateChecker;
 import net.skinsrestorer.shared.update.UpdateCheckerGitHub;
-import net.skinsrestorer.shared.utils.CommandPropertiesManager;
-import net.skinsrestorer.shared.utils.CommandReplacements;
 import net.skinsrestorer.shared.utils.MetricsCounter;
-import net.skinsrestorer.shared.utils.SharedMethods;
 import net.skinsrestorer.shared.utils.connections.MineSkinAPI;
 import net.skinsrestorer.shared.utils.connections.MojangAPI;
 import net.skinsrestorer.shared.utils.log.SRLogger;
@@ -63,7 +70,6 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -77,7 +83,6 @@ public abstract class SkinsRestorerShared implements ISRPlugin {
     @Getter
     protected final String version;
     protected final Injector injector;
-    private CommandManager<?, ?, ?, ?, ?, ?> manager;
     @Getter
     private boolean outdated = false;
 
@@ -100,17 +105,158 @@ public abstract class SkinsRestorerShared implements ISRPlugin {
         this.dataFolder = dataFolder;
     }
 
-    protected CommandManager<?, ?, ?, ?, ?, ?> sharedInitCommands() {
-        this.manager = createCommandManager();
+    protected <S> CommandDispatcher<S> createDispatcher(PlatformWrapper<S> wrapper, Class<? extends SharedGUICommand> guiCommandClass) {
+        CommandDispatcher<S> dispatcher = new CommandDispatcher<>();
 
-        prepareACF();
+        dispatcher.register(createSkinCommand(wrapper));
+        dispatcher.register(createSRCommand(wrapper));
 
-        runRepeatAsync(injector.getSingleton(CooldownStorage.class)::cleanup, 60, 60, TimeUnit.SECONDS);
-
-        return manager;
+        return dispatcher;
     }
 
-    protected abstract CommandManager<?, ?, ?, ?, ?, ?> createCommandManager();
+    protected <S> LiteralArgumentBuilder<S> createSRCommand(PlatformWrapper<S> wrapper) {
+        ISRPlayerArgumentType playerArgumentType = injector.newInstance(ISRPlayerArgumentType.class);
+        SharedSRCommand srCommand = injector.newInstance(SharedSRCommand.class);
+        CommandHelper<S> commandHelper = new CommandHelper<>(null, wrapper); // TODO
+        EnumArgumentType<SharedSRCommand.PlayerOrSkin> enumArgumentType = new EnumArgumentType<>(SharedSRCommand.PlayerOrSkin.class);
+
+        PermissionCheck<S> permissionCheck = new PermissionCheck<>(injector.getSingleton(SettingsManager.class), wrapper);
+
+        CommandNode<S> dropArgument = LiteralArgumentBuilder.<S>literal("drop")
+                .requires(c -> permissionCheck.check(c, "srDrop"))
+                .then(
+                        RequiredArgumentBuilder.<S, SharedSRCommand.PlayerOrSkin>argument("type", enumArgumentType)
+                                .then(
+                                        RequiredArgumentBuilder.<S, String>argument("target", StringArgumentType.string())
+                                                .executes(c -> srCommand.onDrop(wrapper.commandSender(c.getSource()), c.getArgument("player", SharedSRCommand.PlayerOrSkin.class), StringArgumentType.getString(c, "player")))
+                                )
+                ).build();
+        return LiteralArgumentBuilder.<S>literal("sr")
+                .requires(c -> permissionCheck.check(c, "sr"))
+                .then(
+                        LiteralArgumentBuilder.<S>literal("reload")
+                                .requires(c -> permissionCheck.check(c, "srReload"))
+                                .executes(c -> srCommand.onReload(wrapper.commandSender(c.getSource()))
+                                )
+                )
+                .then(
+                        LiteralArgumentBuilder.<S>literal("status")
+                                .requires(c -> permissionCheck.check(c, "srStatus"))
+                                .executes(c -> srCommand.onStatus(wrapper.commandSender(c.getSource())))
+                )
+                .then(dropArgument)
+                .then(
+                        LiteralArgumentBuilder.<S>literal("remove")
+                                .redirect(dropArgument)
+                )
+                .then(
+                        LiteralArgumentBuilder.<S>literal("applyskin")
+                                .requires(c -> permissionCheck.check(c, "srApplySkin"))
+                                .then(
+                                        RequiredArgumentBuilder.<S, ISRPlayer>argument("target", playerArgumentType)
+                                                .executes(c -> srCommand.onApplySkin(wrapper.commandSender(c.getSource()), c.getArgument("target", ISRPlayer.class)))
+                                )
+                )
+                .executes(commandHelper::help);
+    }
+
+    public <S> LiteralArgumentBuilder<S> createSkinCommand(PlatformWrapper<S> wrapper) {
+        ISRPlayerArgumentType playerArgumentType = injector.newInstance(ISRPlayerArgumentType.class);
+        EnumArgumentType<SkinVariant> enumArgumentType = new EnumArgumentType<>(SkinVariant.class);
+        SharedSkinCommand sharedSkinCommand = injector.getSingleton(SharedSkinCommand.class);
+
+        CommandHelper<S> commandHelper = new CommandHelper<>(null, wrapper); // TODO
+
+        PermissionCheck<S> permissionCheck = new PermissionCheck<>(injector.getSingleton(SettingsManager.class), wrapper);
+        RequirePlayer<S> requirePlayer = new RequirePlayer<>(wrapper);
+
+        return LiteralArgumentBuilder.<S>literal("skin")
+                .requires(c -> permissionCheck.check(c, "skin"))
+                .then(
+                        LiteralArgumentBuilder.<S>literal("clear")
+                                .requires(c -> permissionCheck.check(c, "skinClear"))
+                                .then(
+                                        RequiredArgumentBuilder.<S, ISRPlayer>argument("player", playerArgumentType)
+                                                .requires(c -> permissionCheck.check(c, "skinClearOther"))
+                                                .executes(c -> sharedSkinCommand.onSkinClearOther(
+                                                        wrapper.commandSender(c.getSource()), c.getArgument("player", ISRPlayer.class)))
+                                )
+                                .executes(c -> requirePlayer.require(c, sharedSkinCommand::onSkinClear))
+                )
+                .then(
+                        LiteralArgumentBuilder.<S>literal("search")
+                                .requires(c -> permissionCheck.check(c, "skinSearch"))
+                                .then(
+                                        RequiredArgumentBuilder.<S, String>argument("name", StringArgumentType.string())
+                                                .executes(c -> sharedSkinCommand.onSkinSearch(wrapper.commandSender(c.getSource()), c.getArgument("name", String.class)))
+                                )
+                                .executes(commandHelper::help)
+                )
+                .then(
+                        LiteralArgumentBuilder.<S>literal("update")
+                                .requires(c -> permissionCheck.check(c, "skinUpdate"))
+                                .then(
+                                        RequiredArgumentBuilder.<S, ISRPlayer>argument("player", playerArgumentType)
+                                                .requires(c -> permissionCheck.check(c, "skinUpdateOther"))
+                                                .executes(c -> sharedSkinCommand.onSkinUpdateOther(wrapper.commandSender(c.getSource()), c.getArgument("player", ISRPlayer.class)))
+                                )
+                                .executes(c -> requirePlayer.require(c, sharedSkinCommand::onSkinUpdate))
+                )
+                .then(
+                        LiteralArgumentBuilder.<S>literal("set")
+                                .requires(c -> permissionCheck.check(c, "skinSet"))
+                                .then(
+                                        RequiredArgumentBuilder.<S, ISRPlayer>argument("player", playerArgumentType)
+                                                .requires(c -> permissionCheck.check(c, "skinSetOther"))
+                                                .then(
+                                                        RequiredArgumentBuilder.<S, String>argument("skin", StringArgumentType.string())
+                                                                .then(
+                                                                        RequiredArgumentBuilder.<S, SkinVariant>argument("variant", enumArgumentType)
+                                                                                .executes(c -> sharedSkinCommand.onSkinSetOther(
+                                                                                        wrapper.commandSender(c.getSource()), c.getArgument("player", ISRPlayer.class),
+                                                                                        c.getArgument("skin", String.class), c.getArgument("variant", SkinVariant.class)))
+                                                                )
+                                                                .executes(c -> sharedSkinCommand.onSkinSetOther(
+                                                                        wrapper.commandSender(c.getSource()), c.getArgument("player", ISRPlayer.class),
+                                                                        c.getArgument("skin", String.class), null))
+                                                )
+                                )
+                                .then(
+                                        RequiredArgumentBuilder.<S, String>argument("skin", StringArgumentType.string())
+                                                .executes(c -> requirePlayer.require(c, p -> sharedSkinCommand.onSkinSet(p, c.getArgument("skin", String.class))))
+                                )
+                                .executes(commandHelper::help)
+                )
+                .then(
+                        LiteralArgumentBuilder.<S>literal("url")
+                                .requires(c -> permissionCheck.check(c, "skinUrl"))
+                                .then(
+                                        RequiredArgumentBuilder.<S, SkinVariant>argument("variant", enumArgumentType)
+                                                .executes(c -> requirePlayer.require(c, p -> sharedSkinCommand.onSkinUrl(
+                                                        p, c.getArgument("url", String.class),
+                                                        c.getArgument("variant", SkinVariant.class))))
+                                )
+                                .then(
+                                        RequiredArgumentBuilder.<S, String>argument("url", StringArgumentType.string())
+                                                .executes(c -> requirePlayer.require(c, p -> sharedSkinCommand.onSkinUrl(p, c.getArgument("url", String.class), null)))
+                                )
+                                .executes(commandHelper::help)
+                )
+                .then(
+                        RequiredArgumentBuilder.<S, String>argument("skin", StringArgumentType.string())
+                                .executes(c -> requirePlayer.require(c, p -> sharedSkinCommand.onSkinSet(p, c.getArgument("skin", String.class))))
+                );
+    }
+
+
+    public <S> LiteralArgumentBuilder<S> createSkinsCommand(SharedGUICommand sharedGUICommand, PlatformWrapper<S> wrapper) {
+        PermissionCheck<S> permissionCheck = new PermissionCheck<>(injector.getSingleton(SettingsManager.class), wrapper);
+        RequirePlayer<S> requirePlayer = new RequirePlayer<>(wrapper);
+
+        return LiteralArgumentBuilder.<S>literal("skins")
+                .requires(c -> permissionCheck.check(c, "skins"))
+                .executes(c -> requirePlayer.require(c, sharedGUICommand::onDefault));
+    }
 
     protected abstract boolean isProxyMode();
 
@@ -225,23 +371,6 @@ public abstract class SkinsRestorerShared implements ISRPlugin {
         }
     }
 
-    @SuppressWarnings({"deprecation"})
-    public void prepareACF() {
-        SettingsManager settings = injector.getSingleton(SettingsManager.class);
-        SkinsRestorerLocale locale = injector.getSingleton(SkinsRestorerLocale.class);
-        // optional: enable unstable api to use help
-        manager.enableUnstableAPI("help");
-        CommandReplacements.permissions.forEach((k, v) -> manager.getCommandReplacements().addReplacement(k, v.call(settings)));
-        CommandReplacements.descriptions.forEach((k, v) -> manager.getCommandReplacements().addReplacement(k, locale.getMessage(locale.getDefaultForeign(), v)));
-        CommandReplacements.syntax.forEach((k, v) -> manager.getCommandReplacements().addReplacement(k, locale.getMessage(locale.getDefaultForeign(), v)));
-        CommandReplacements.completions.forEach((k, v) -> manager.getCommandCompletions().registerAsyncCompletion(k, c ->
-                Arrays.asList(locale.getMessage(locale.getDefaultForeign(), v).split(", "))));
-
-        CommandPropertiesManager.load(manager, dataFolder, getResource("command.properties"), logger);
-
-        SharedMethods.allowIllegalACFNames();
-    }
-
     public void checkUpdateInit(Runnable check) {
         Path updaterDisabled = dataFolder.resolve("noupdate.txt");
         if (Files.exists(updaterDisabled)) {
@@ -294,6 +423,8 @@ public abstract class SkinsRestorerShared implements ISRPlugin {
         if (!unitTest) {
             registerMetrics(createMetricsInstance());
         }
+
+        runRepeatAsync(injector.getSingleton(CooldownStorage.class)::cleanup, 60, 60, TimeUnit.SECONDS);
     }
 
     protected void updateCheck() {

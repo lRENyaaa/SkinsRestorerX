@@ -19,6 +19,8 @@
  */
 package net.skinsrestorer.shared.interfaces;
 
+import java.util.Optional;
+
 public interface ISRServerPlugin extends ISRPlugin {
     void runSync(Runnable runnable);
 

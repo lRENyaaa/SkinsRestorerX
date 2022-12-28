@@ -32,7 +32,6 @@ import net.skinsrestorer.api.property.IProperty;
 import net.skinsrestorer.api.serverinfo.ServerVersion;
 import net.skinsrestorer.axiom.AxiomConfiguration;
 import net.skinsrestorer.bukkit.commands.GUICommand;
-import net.skinsrestorer.bukkit.commands.SkinCommand;
 import net.skinsrestorer.bukkit.commands.SrCommand;
 import net.skinsrestorer.bukkit.listener.InventoryListener;
 import net.skinsrestorer.bukkit.listener.PlayerJoin;
@@ -44,10 +43,11 @@ import net.skinsrestorer.paper.PaperUtil;
 import net.skinsrestorer.shared.SkinsRestorerLocale;
 import net.skinsrestorer.shared.config.Config;
 import net.skinsrestorer.shared.exception.InitializeException;
-import net.skinsrestorer.shared.injector.OnlinePlayersMethod;
+import net.skinsrestorer.shared.interfaces.ISRCommandSender;
 import net.skinsrestorer.shared.interfaces.ISRPlayer;
 import net.skinsrestorer.shared.plugin.SkinsRestorerServerShared;
 import net.skinsrestorer.shared.reflection.ReflectionUtil;
+import net.skinsrestorer.shared.reflection.exception.ReflectionException;
 import net.skinsrestorer.shared.storage.CallableValue;
 import net.skinsrestorer.shared.utils.SharedMethods;
 import net.skinsrestorer.shared.utils.connections.MojangAPI;
@@ -68,8 +68,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Collection;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -242,10 +241,8 @@ public class SkinsRestorerBukkit extends SkinsRestorerServerShared {
             registerAPI(skinApplierBukkit);
 
             // Init commands
-            CommandManager<?, ?, ?, ?, ?, ?> manager = sharedInitCommands();
+            CommandDispatcher<ISRCommandSender> manager = createDispatcher(injector.newInstance(SrCommand.class));
 
-            manager.registerCommand(injector.getSingleton(SkinCommand.class));
-            manager.registerCommand(injector.newInstance(SrCommand.class));
             manager.registerCommand(injector.newInstance(GUICommand.class));
 
             // Init listener
@@ -459,8 +456,19 @@ public class SkinsRestorerBukkit extends SkinsRestorerServerShared {
     }
 
     @Override
-    protected CommandManager<?, ?, ?, ?, ?, ?> createCommandManager() {
-        return new PaperCommandManager(pluginInstance);
+    public String getPlatformVersion() {
+        return server.getVersion();
+    }
+
+    @Override
+    public List<IProperty> getPropertiesOfPlayer(ISRPlayer player) {
+        try {
+            Map<String, Collection<IProperty>> propertyMap = skinApplier.getPlayerProperties(player.getWrapper().get(Player.class));
+            return new ArrayList<>(propertyMap.get(IProperty.TEXTURES_NAME));
+        } catch (ReflectionException e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
     }
 
     private static class WrapperFactoryBukkit implements IWrapperFactory {

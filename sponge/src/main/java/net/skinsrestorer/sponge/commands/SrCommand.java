@@ -133,22 +133,4 @@ public class SrCommand extends SharedSRCommand {
     public void onPurgeOldData(CommandSource source, int days) {
         onPurgeOldData(wrapper.commandSender(source), days);
     }
-
-    @Override
-    public String getPlatformVersion() {
-        return plugin.getGame().getPlatform().getMinecraftVersion().getName();
-    }
-
-    @Override
-    public String getProxyMode() {
-        return "Sponge-Plugin";
-    }
-
-    @Override
-    public List<IProperty> getPropertiesOfPlayer(ISRPlayer player) {
-        Collection<ProfileProperty> properties = player.getWrapper().get(Player.class).getProfile().getPropertyMap().get(IProperty.TEXTURES_NAME);
-        return properties.stream()
-                .map(property -> new GenericProperty(property.getName(), property.getValue(), property.getSignature().orElse("")))
-                .collect(Collectors.toList());
-    }
 }

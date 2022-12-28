@@ -30,7 +30,6 @@ import net.skinsrestorer.bukkit.SkinApplierBukkit;
 import net.skinsrestorer.bukkit.SkinsRestorerBukkit;
 import net.skinsrestorer.bukkit.utils.WrapperBukkit;
 import net.skinsrestorer.shared.commands.SharedSRCommand;
-import net.skinsrestorer.shared.injector.OnlinePlayersMethod;
 import net.skinsrestorer.shared.interfaces.ISRPlayer;
 import net.skinsrestorer.shared.reflection.exception.ReflectionException;
 import net.skinsrestorer.shared.storage.CallableValue;
@@ -53,7 +52,7 @@ public class SrCommand extends SharedSRCommand {
 
     @Inject
     public SrCommand(SkinsRestorerBukkit plugin, MojangAPI mojangAPI, SkinStorage skinStorage, SettingsManager settings, SRLogger logger, SkinApplierBukkit skinApplier, WrapperBukkit wrapperBukkit,
-                     @OnlinePlayersMethod CallableValue<Collection<ISRPlayer>> onlinePlayersFunction) {
+                     CallableValue<Collection<ISRPlayer>> onlinePlayersFunction) {
         super(plugin, mojangAPI, skinStorage, settings, logger, onlinePlayersFunction);
         this.plugin = plugin;
         this.skinApplier = skinApplier;
@@ -140,26 +139,5 @@ public class SrCommand extends SharedSRCommand {
     @Override
     public void reloadCustomHook() {
         skinApplier.setOptFileChecked(false);
-    }
-
-    @Override
-    public String getPlatformVersion() {
-        return plugin.getServer().getVersion();
-    }
-
-    @Override
-    public String getProxyMode() {
-        return String.valueOf(plugin.isProxyMode());
-    }
-
-    @Override
-    public List<IProperty> getPropertiesOfPlayer(ISRPlayer player) {
-        try {
-            Map<String, Collection<IProperty>> propertyMap = skinApplier.getPlayerProperties(player.getWrapper().get(Player.class));
-            return new ArrayList<>(propertyMap.get(IProperty.TEXTURES_NAME));
-        } catch (ReflectionException e) {
-            e.printStackTrace();
-            return Collections.emptyList();
-        }
     }
 }

@@ -51,7 +51,7 @@ public abstract class SharedPluginMessageListener {
         return byteOut.toByteArray();
     }
 
-    public void sendPage(int page, ISRProxyPlayer player) {
+    public static void sendPage(int page, ISRProxyPlayer player, SkinStorage skinStorage, SRLogger logger) {
         int skinNumber = 36 * page;
 
         byte[] ba = convertToByteArray(skinStorage.getSkins(skinNumber));
@@ -108,7 +108,7 @@ public abstract class SharedPluginMessageListener {
                 // sr:messagechannel
                 case "getSkins":
                     int page = Math.min(in.readInt(), 999);
-                    sendPage(page, player);
+                    sendPage(page, player, skinStorage, logger);
                     break;
                 case "clearSkin":
                     player.forceExecuteCommand("skin clear");

@@ -16,8 +16,8 @@ dependencies {
     implementation("com.github.aikar:locales:5f204c3afb")
     implementation("org.bstats:bstats-base:3.0.0")
 
-    compileOnly("co.aikar:acf-core:0.5.1-SNAPSHOT")
     compileOnly("org.slf4j:slf4j-api:2.0.6")
+    api("com.mojang:brigadier:1.0.18")
 }
 
 tasks.getByName<Test>("test") {
