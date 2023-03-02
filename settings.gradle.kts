@@ -1,5 +1,4 @@
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
-enableFeaturePreview("VERSION_CATALOGS")
 
 pluginManagement {
     repositories {
@@ -9,18 +8,18 @@ pluginManagement {
         gradlePluginPortal()
     }
     plugins {
-        id("com.github.johnrengelman.shadow") version "7.1.2"
+        id("com.github.johnrengelman.shadow") version "8.1.0"
         id("org.cadixdev.licenser") version "0.6.1"
         id("net.kyori.indra") version "3.0.1"
         id("net.kyori.indra.git") version "3.0.1"
         id("net.kyori.indra.publishing") version "3.0.1"
         id("net.kyori.blossom") version "1.3.1"
-        id("io.github.patrick.remapper") version "1.3.0"
+        id("io.github.patrick.remapper") version "1.4.0"
     }
 }
 
 plugins {
-    id("com.gradle.enterprise") version "3.12.2"
+    id("com.gradle.enterprise") version "3.12.4"
 }
 
 rootProject.name = "skinsrestorer-parent"
