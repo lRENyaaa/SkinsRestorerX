@@ -13,7 +13,7 @@ dependencies {
         exclude("com.google.code.gson", "gson")
     }
 
-    implementation("io.papermc:paperlib:1.0.7")
+    implementation("io.papermc:paperlib:1.0.8")
     implementation("org.bstats:bstats-bukkit:3.0.1")
     implementation("co.aikar:acf-paper:0.5.1-SNAPSHOT")
     implementation("com.github.cryptomorin:XSeries:9.3.0")
